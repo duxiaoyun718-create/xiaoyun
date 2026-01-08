@@ -1,0 +1,13 @@
+在cmd中cd到对应的文件夹
+指令均在cmd中输入
+# 1. 删除旧的虚拟环境
+rmdir /s venv  # 在Windows上
+# 2. 创建新的虚拟环境
+python -m venv venv
+# 3. 激活
+venv\bin\activate 这一步看你的activate.bat具体在那个文件目录下面
+这一步有可能是venv\Scripts\activate
+# 4. 安装依赖
+pip install flask-login flask-wtf flask-sqlalchemy -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+#5.开启
+python app.py

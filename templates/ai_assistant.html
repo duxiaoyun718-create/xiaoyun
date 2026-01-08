@@ -1,0 +1,562 @@
+{% extends "base.html" %}
+
+{% block title %}AI 智能助手 - 旗舰版{% endblock %}
+
+{% block extra_css %}
+<!-- 引入 Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+<style>
+    /* === 整体布局 === */
+    .ai-chat-container {
+        background: #f8f9fa;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        height: calc(100vh - 160px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+        position: relative;
+    }
+
+    /* === 头部 === */
+    .chat-header {
+        background: white;
+        padding: 15px 20px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+    }
+
+    /* === 消息列表区域 === */
+    .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        scroll-behavior: smooth;
+    }
+
+    /* === 消息气泡 === */
+    .message {
+        display: flex;
+        gap: 12px;
+        max-width: 85%; /* 默认文本宽度 */
+        animation: fadeIn 0.3s ease;
+    }
+    
+    /* 针对 AI 消息（包含图表）特别放宽宽度限制 */
+    .message.ai {
+        align-self: flex-start;
+        max-width: 98%; /* 让图表可以展示得很宽 */
+    }
+
+    .message.user {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
+
+    .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 20px;
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .avatar.user-avatar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .avatar.ai-avatar { background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%); }
+
+    .message-content {
+        padding: 12px 18px;
+        border-radius: 16px;
+        font-size: 15px;
+        line-height: 1.6;
+        position: relative;
+        word-break: break-word;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .message.user .message-content {
+        background: #4e73df;
+        color: white;
+        border-bottom-right-radius: 2px;
+    }
+
+    .message.ai .message-content {
+        background: white;
+        color: #333;
+        border: 1px solid #eee;
+        border-bottom-left-radius: 2px;
+        width: fit-content; /* 让宽度自适应内容 */
+    }
+
+    /* === 快捷询问栏 (Suggestion Chips) === */
+    .quick-actions {
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.9);
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none; /* 隐藏滚动条 */
+    }
+    .quick-actions::-webkit-scrollbar { display: none; }
+
+    .chip {
+        background: white;
+        border: 1px solid #dee2e6;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .chip:hover {
+        background: #eef2ff;
+        border-color: #4e73df;
+        color: #4e73df;
+        transform: translateY(-2px);
+    }
+    .chip i { font-size: 14px; }
+
+    /* === 输入区域 === */
+    .chat-input-area {
+        background: white;
+        padding: 15px 20px;
+    }
+
+    .input-wrapper {
+        display: flex;
+        gap: 10px;
+        background: #f8f9fa;
+        padding: 8px;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+        transition: border-color 0.3s;
+    }
+
+    .input-wrapper:focus-within {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 3px rgba(78,115,223,0.1);
+    }
+
+    #chatInput {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 8px;
+        outline: none;
+        font-size: 15px;
+    }
+
+    #sendBtn {
+        border: none;
+        background: #4e73df;
+        color: white;
+        width: 45px;
+        height: 45px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    #sendBtn:hover { background: #2e59d9; transform: scale(1.05); }
+    #sendBtn:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* === 配置面板 === */
+    .config-panel {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 15px;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .config-panel.show { display: block; animation: slideDown 0.3s; }
+
+    /* === 图表容器样式优化 === */
+    .chart-box {
+        width: 100%;
+        min-width: 650px; /* 强制最小宽度，防止挤压 */
+        height: 400px;
+        background: #fff;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+    /* 移动端适配：允许滚动 */
+    @media (max-width: 768px) {
+        .chart-box { min-width: 300px; height: 300px; }
+        .message.ai { max-width: 100%; }
+        .quick-actions { padding: 10px; }
+    }
+
+    /* === 动画 === */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .typing { display: none; margin-left: 50px; font-size: 12px; color: #999; margin-bottom: 10px; }
+    .typing.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    
+    <!-- 顶部标题栏 -->
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+        <div>
+            <h1 class="h3 text-gray-800 fw-bold"><i class="bi bi-robot text-primary me-2"></i>CampusPulse 智能中枢</h1>
+            <p class="text-muted small mb-0">集成 GPT-4 级对话、AI 绘图与可视化分析</p >
+        </div>
+        <button class="btn btn-white border shadow-sm text-primary" onclick="toggleConfig()">
+            <i class="bi bi-sliders me-1"></i> 模型与配置
+        </button>
+    </div>
+
+    <!-- API 配置面板 (带模型选择) -->
+    <div class="config-panel mb-4" id="configPanel">
+        <h6 class="fw-bold mb-3"><i class="bi bi-gear-fill"></i> 系统设置</h6>
+        <div class="row g-3">
+            <!-- API Key 输入 -->
+            <div class="col-md-6">
+                <label class="form-label small text-muted">智谱清言 API Key</label>
+                <input type="password" id="apiKeyInput" class="form-control" placeholder="请输入 API Key...">
+            </div>
+            <!-- 模型选择 (新增) -->
+            <div class="col-md-4">
+                <label class="form-label small text-muted">选择 AI 模型</label>
+                <select class="form-select" id="modelSelect">
+                    <option value="glm-4">GLM-4 (更智能/推荐)</option>
+                    <option value="glm-4-plus">GLM-4 Plus (最强)</option>
+                    <option value="glm-3-turbo">GLM-3 Turbo (速度快)</option>
+                </select>
+            </div>
+            <!-- 保存按钮 -->
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-primary w-100" onclick="saveConfig()">
+                    <i class="bi bi-save"></i> 保存
+                </button>
+            </div>
+        </div>
+        <div class="small text-muted mt-2">
+            <i class="bi bi-shield-lock"></i> 您的 Key 仅存储在本地浏览器，安全无忧。
+        </div>
+    </div>
+
+    <!-- 聊天主界面 -->
+    <div class="ai-chat-container">
+        
+        <!-- 消息列表 -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- 欢迎消息 -->
+            <div class="message ai">
+                <div class="avatar ai-avatar"><i class="bi bi-robot"></i></div>
+                <div class="message-content">
+                    你好！我是你的全能 AI 伙伴。你可以点击下方快捷按钮，或直接问我：<br>
+                    <div class="mt-2 text-muted small">
+                        • 生成图表：<b>"统计本周学习时长并生成图表"</b><br>
+                        • AI 绘画：<b>"画一张未来城市的图片"</b><br>
+                        • 知识问答：<b>"解释一下深度学习"</b>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 思考状态 -->
+        <div class="typing" id="typingIndicator">
+            <span class="spinner-grow spinner-grow-sm text-primary" role="status"></span>
+            <span class="ms-2">AI 正在深度思考中...</span>
+        </div>
+
+        <!-- 快捷询问栏 (新增) -->
+        <div class="quick-actions">
+            <div class="chip" onclick="usePrompt('帮我制定今天的学习计划')">
+                <i class="bi bi-calendar-check"></i> 制定计划
+            </div>
+            <div class="chip" onclick="usePrompt('统计这周的学习时长：周一4小时，周二5小时，周三3小时，生成柱状图')">
+                <i class="bi bi-bar-chart-fill"></i> 生成示例图表
+            </div>
+            <div class="chip" onclick="usePrompt('画一张赛博朋克风格的图书馆')">
+                <i class="bi bi-palette-fill"></i> 画一张图
+            </div>
+            <div class="chip" onclick="usePrompt('解释一下什么是Python列表推导式')">
+                <i class="bi bi-code-slash"></i> Python知识
+            </div>
+            <div class="chip" onclick="usePrompt('如何缓解考前焦虑？')">
+                <i class="bi bi-heart-pulse"></i> 心理调节
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <input type="text" id="chatInput" placeholder="输入您的问题... (按 Enter 发送)" autocomplete="off">
+                <button id="sendBtn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <span class="small text-muted" id="statusText">
+                    <i class="bi bi-circle-fill text-secondary me-1" style="font-size: 8px;"></i>等待连接
+                </span>
+                <button class="btn btn-link btn-sm text-muted text-decoration-none p-0" onclick="clearChat()">
+                    <i class="bi bi-trash"></i> 清空对话
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 引入 ECharts -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+<script>
+// ================= 全局配置 =================
+const CONFIG = {
+    url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    imgUrl: 'https://open.bigmodel.cn/api/paas/v4/images/generations',
+    key: localStorage.getItem('zhipu_apikey') || '',
+    model: localStorage.getItem('zhipu_model') || 'glm-4' // 读取存储的模型
+};
+
+// DOM 元素引用
+const dom = {
+    msgList: document.getElementById('chatMessages'),
+    input: document.getElementById('chatInput'),
+    typing: document.getElementById('typingIndicator'),
+    keyInput: document.getElementById('apiKeyInput'),
+    modelSelect: document.getElementById('modelSelect'),
+    configPanel: document.getElementById('configPanel'),
+    status: document.getElementById('statusText')
+};
+
+// 初始化加载
+window.onload = () => {
+    dom.keyInput.value = CONFIG.key;
+    dom.modelSelect.value = CONFIG.model; // 设置下拉框选中状态
+    updateStatus();
+    dom.input.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+};
+
+// ================= 功能：发送消息路由 =================
+function sendMessage() {
+    const text = dom.input.value.trim();
+    if (!text) return;
+    if (!CONFIG.key) { alert('请先在右上角配置 API Key'); toggleConfig(); return; }
+
+    addMessage(text, 'user');
+    dom.input.value = '';
+    setLoading(true);
+
+    // 意图判断
+    const isChart = text.includes('图表') || text.includes('统计') || text.includes('趋势') || text.includes('分析') || text.includes('可视化');
+    const isDraw = text.startsWith('/img') || text.includes('画一张') || (text.includes('生成') && text.includes('图片')) || text.includes('绘图');
+
+    if (isChart) {
+        requestChart(text); // 图表模式
+    } else if (isDraw) {
+        const prompt = text.replace('/img', '').replace('画一张', '').replace('生成图片', '').trim();
+        requestImage(prompt); // 生图模式
+    } else {
+        requestChat(text); // 聊天模式
+    }
+}
+// ================= 模式 1：生成图表 (带保存功能) =================
+async function requestChart(userPrompt) {
+    try {
+        const systemPrompt = `你是一个ECharts专家。请根据用户数据生成 option JSON。
+        【严格要求】：
+        1. 只返回 JSON，不要 Markdown，不要解释。
+        2. 必须包含 toolbox: { feature: { saveAsImage: { title: "保存" } } } 以便用户下载。
+        3. 必须包含 tooltip 和 legend。
+        4. 确保 JSON 格式标准（key用双引号）。
+        `;
+
+        const response = await fetch(CONFIG.url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: CONFIG.model, // 使用用户选择的模型
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.1
+            })
+        });
+
+        const data = await response.json();
+        const aiText = data.choices[0].message.content;
+        renderChart(aiText);
+
+    } catch (e) {
+        addMessage(`生成图表失败: ${e.message}`, 'ai');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ================= 模式 2：生成图片 =================
+async function requestImage(prompt) {
+    addMessage(`正在调用 CogView 绘制：${prompt}...`, 'ai');
+    try {
+        const response = await fetch(CONFIG.imgUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'cogview-3', prompt: prompt })
+        });
+        const data = await response.json();
+        if(data.data) {
+            const imgHTML = `
+                <div>🎨 绘画完成：</div>
+                < img src="${data.data[0].url}" style="max-width: 100%; border-radius: 12px; margin-top: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" onclick="window.open(this.src)">
+            `;
+            addMessage(imgHTML, 'ai', true);
+        } else {
+            throw new Error('生成失败，可能是 Prompt 违规或余额不足');
+        }
+    } catch (e) {
+        addMessage(`绘画出错: ${e.message}`, 'ai');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ================= 模式 3：普通聊天 =================
+async function requestChat(text) {
+    try {
+        const response = await fetch(CONFIG.url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${CONFIG.key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: CONFIG.model, // 使用用户选择的模型
+                messages: [{ role: 'user', content: text }],
+                temperature: 0.7
+            })
+        });
+        const data = await response.json();
+        addMessage(data.choices[0].message.content, 'ai');
+    } catch (e) {
+        addMessage(`连接错误: ${e.message}`, 'ai');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ================= 核心：图表渲染 (带自动注入保存按钮) =================
+function renderChart(rawText) {
+    // 1. 清洗数据
+    let jsonStr = rawText.replace(/```json|```|const option =|var option =/g, '').replace(/\/\/.*$/gm, '').trim();
+    const match = jsonStr.match(/(\{[\s\S]*\})/);
+    if (match) jsonStr = match[0];
+
+    try {
+        let option = new Function(`return ${jsonStr}`)();
+        
+        // 2. 强制注入“保存图片”按钮配置 (Magic Fix)
+        if (!option.toolbox) option.toolbox = {};
+        if (!option.toolbox.feature) option.toolbox.feature = {};
+        option.toolbox.feature.saveAsImage = { 
+            show: true, 
+            title: '保存图表',
+            pixelRatio: 2 
+        };
+
+        // 3. 渲染
+        const chartId = 'chart_' + Date.now();
+        // 注意：这里 class="chart-box" 对应了 CSS 中的宽高度设置
+        const html = `
+            <div>📊 分析结果：</div>
+            <div id="${chartId}" class="chart-box"></div>
+        `;
+        addMessage(html, 'ai', true);
+
+        setTimeout(() => {
+            const el = document.getElementById(chartId);
+            if (el) {
+                const myChart = echarts.init(el);
+                myChart.setOption(option);
+                window.addEventListener('resize', () => myChart.resize());
+            }
+        }, 100);
+
+    } catch (e) {
+        addMessage("图表数据解析失败，转为文本显示：<br>" + rawText, 'ai', true);
+    }
+}
+
+// ================= 辅助函数 =================
+function addMessage(content, role, isHTML = false) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    
+    div.innerHTML = `
+        <div class="avatar ${role}-avatar">
+            <i class="bi ${role === 'user' ? 'bi-person-fill' : 'bi-robot'}"></i>
+        </div>
+        <div class="message-content">
+            ${isHTML ? content : content.replace(/\n/g, '<br>')}
+        </div>
+    `;
+    dom.msgList.appendChild(div);
+    dom.msgList.scrollTop = dom.msgList.scrollHeight;
+}
+
+// 快捷询问
+function usePrompt(text) {
+    dom.input.value = text;
+    sendMessage();
+}
+
+function setLoading(isLoading) {
+    dom.typing.className = isLoading ? 'typing active' : 'typing';
+    document.getElementById('sendBtn').disabled = isLoading;
+}
+
+function toggleConfig() {
+    dom.configPanel.classList.toggle('show');
+}
+
+function saveConfig() {
+    const key = dom.keyInput.value.trim();
+    const model = dom.modelSelect.value; // 获取选中的模型
+    if (key) {
+        localStorage.setItem('zhipu_apikey', key);
+        localStorage.setItem('zhipu_model', model); // 保存模型
+        CONFIG.key = key;
+        CONFIG.model = model;
+        alert('配置已保存！当前模型：' + model);
+        toggleConfig();
+        updateStatus();
+    }
+}
+
+function updateStatus() {
+    const isConn = !!CONFIG.key;
+    dom.status.innerHTML = isConn 
+        ? `<i class="bi bi-circle-fill text-success me-1" style="font-size: 8px;"></i>已连接 (${CONFIG.model})`
+        : `<i class="bi bi-circle-fill text-secondary me-1" style="font-size: 8px;"></i>等待配置`;
+}
+
+function clearChat() {
+    dom.msgList.innerHTML = '';
+}
+</script>
+{% endblock %}

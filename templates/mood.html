@@ -1,0 +1,1082 @@
+<!-- templates/mood.html - 柔和翻页版本 -->
+{% extends "base.html" %}
+
+{% block title %}心情记录 - CampusPulse{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 心情选择器样式 */
+    .mood-selector {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+    
+    .mood-option {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 3px solid transparent;
+        background: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .mood-option:hover {
+        transform: translateY(-5px) scale(1.1);
+    }
+    
+    .mood-option.selected {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    .mood-emoji {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mood-1 .mood-emoji { color: #ef4444; }
+    .mood-2 .mood-emoji { color: #f59e0b; }
+    .mood-3 .mood-emoji { color: #64748b; }
+    .mood-4 .mood-emoji { color: #10b981; }
+    .mood-5 .mood-emoji { color: #3b82f6; }
+    
+    /* 心情时间线样式 */
+    .mood-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .mood-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(to bottom, var(--primary), var(--secondary));
+        border-radius: 3px;
+    }
+    
+    .mood-entry {
+        position: relative;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+    
+    .mood-entry:hover {
+        transform: translateX(5px);
+        box-shadow: var(--shadow);
+    }
+    
+    .mood-entry::before {
+        content: '';
+        position: absolute;
+        left: -2.4rem;
+        top: 2rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--primary);
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    /* 心情图表样式 */
+    .mood-chart {
+        height: 200px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .insight-card {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+    }
+    
+    /* 书籍卡片样式 */
+    .quote-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: none;
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        position: relative;
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.05),
+            0 10px 15px -3px rgba(0, 0, 0, 0.08);
+        min-height: 200px;
+        overflow: hidden;
+    }
+    
+    .quote-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(to bottom, var(--primary), var(--secondary));
+        border-radius: var(--radius) 0 0 var(--radius);
+    }
+    
+    /* 柔和翻页容器 */
+    .flip-container {
+        perspective: 1000px;
+        min-height: 180px;
+        position: relative;
+        cursor: pointer;
+    }
+    
+    .flip-page {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        backface-visibility: hidden;
+        transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: right center;
+        border-radius: 4px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.05),
+            0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+    
+    .flip-page.front {
+        z-index: 2;
+        transform: rotateY(0deg);
+    }
+    
+    .flip-page.back {
+        z-index: 1;
+        transform: rotateY(180deg);
+    }
+    
+    .flip-page.flipping {
+        z-index: 3;
+    }
+    
+    .page-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 1rem;
+        position: relative;
+    }
+    
+    .quote-text {
+        font-family: 'Georgia', 'Times New Roman', serif;
+        font-size: 1.1rem;
+        line-height: 1.7;
+        color: #334155;
+        margin-bottom: 1.2rem;
+        font-style: italic;
+        text-align: justify;
+        padding-right: 10px;
+        position: relative;
+    }
+    
+    .quote-text::before {
+        content: '"';
+        position: absolute;
+        left: -10px;
+        top: -10px;
+        font-size: 2.5rem;
+        color: var(--primary);
+        opacity: 0.2;
+        font-family: 'Georgia', serif;
+    }
+    
+    .quote-text::after {
+        content: '"';
+        position: absolute;
+        right: 5px;
+        bottom: -15px;
+        font-size: 2.5rem;
+        color: var(--primary);
+        opacity: 0.2;
+        font-family: 'Georgia', serif;
+    }
+    
+    .quote-author {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+        color: #64748b;
+        text-align: right;
+        font-weight: 500;
+        padding-top: 0.8rem;
+        margin-top: 0.8rem;
+        border-top: 1px solid rgba(99, 102, 241, 0.1);
+    }
+    
+    /* 翻页指示器 */
+    .page-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    
+    .page-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .page-dot.active {
+        background: var(--primary);
+        transform: scale(1.2);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    .page-dot:hover {
+        background: var(--primary);
+    }
+    
+    /* 导航按钮 */
+    .flip-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 1.5rem;
+    }
+    
+    .flip-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid var(--gray-light);
+        background: white;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 1.2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .flip-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    }
+    
+    .flip-btn:active {
+        transform: translateY(0);
+    }
+    
+    .flip-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    .flip-btn:disabled:hover {
+        background: white;
+        color: var(--primary);
+        border-color: var(--gray-light);
+    }
+    
+    /* 页面装饰 */
+    .page-decoration {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0.5;
+    }
+    
+    .page-line {
+        width: 30px;
+        height: 1px;
+        background: var(--gray-light);
+    }
+    
+    .page-number {
+        font-size: 0.75rem;
+        color: var(--gray);
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* 淡入淡出动画 */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.6s ease-out;
+    }
+    
+    /* 其他样式 */
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--gray);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .char-count {
+        font-size: 0.85rem;
+    }
+    
+    .char-count.limit {
+        color: var(--danger);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 左侧：心情记录 -->
+    <div class="col-lg-8">
+        <div class="card mb-4 hover-lift">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-emoji-smile text-primary me-2"></i>记录今日心情
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            {% if today_mood %}
+                                ✅ 今日已记录 {{ today_mood.mood_score }}/5 分
+                            {% else %}
+                                📝 记录心情有助于追踪情绪变化
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if today_mood %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>已记录
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('log_mood') }}" method="POST" id="moodForm">
+                    <!-- 心情选择器 -->
+                    <div class="mood-selector">
+                        {% for i in range(1, 6) %}
+                        <div class="mood-option mood-{{ i }}" data-score="{{ i }}">
+                            <div class="mood-emoji">
+                                {{ ['😞', '😕', '😐', '🙂', '😊'][i-1] }}
+                            </div>
+                            <small class="fw-semibold">{{ i }}分</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="mood_score" id="selectedMood" value="3" required>
+                    
+                    <!-- 心情描述 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-pencil me-2"></i>心情描述（可选）
+                        </label>
+                        <textarea class="form-control" name="note" rows="4" 
+                                  placeholder="今天发生了什么？有什么特别的感受想记录吗？可以写下具体的事情、想法或感受..."
+                                  id="moodNote"></textarea>
+                        <div class="text-end mt-2">
+                            <small class="char-count text-muted" id="charCount">0/200 字</small>
+                        </div>
+                    </div>
+                    
+                    <!-- 快速标签 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold mb-2">
+                            <i class="bi bi-tags me-2"></i>快速标签
+                        </label>
+                        <div class="d-flex flex-wrap gap-2" id="quickTags">
+                            <button type="button" class="btn btn-sm btn-outline-primary tag-btn">
+                                😊 开心
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary tag-btn">
+                                📚 学习进步
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary tag-btn">
+                                🏃 运动
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary tag-btn">
+                                🎵 听音乐
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary tag-btn">
+                                🍜 美食
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary tag-btn">
+                                😴 休息
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 提交按钮 -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary hover-lift" id="cancelBtn">
+                            <i class="bi bi-x-circle me-1"></i>取消
+                        </button>
+                        <button type="submit" class="btn btn-primary hover-lift">
+                            <i class="bi bi-save me-1"></i>
+                            {% if today_mood %}更新心情记录{% else %}保存心情记录{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 心情历史 -->
+        <div class="card hover-lift">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar-heart text-primary me-2"></i>心情历史记录
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if moods %}
+                <div class="mood-timeline">
+                    {% for mood in moods[:10] %}
+                    <div class="mood-entry fade-in">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge mood-{{ mood.mood_score }} mb-2">
+                                    {{ ['😞', '😕', '😐', '🙂', '😊'][mood.mood_score - 1] }}
+                                    {{ mood.mood_score }}/5 分
+                                </span>
+                                <h6 class="mb-1">{{ mood.created_at.strftime('%Y年%m月%d日 %H:%M') }}</h6>
+                            </div>
+                            <small class="text-muted">{{ mood.created_at.strftime('%m-%d %H:%M') }}</small>
+                        </div>
+                        {% if mood.note %}
+                        <p class="mb-0">{{ mood.note }}</p>
+                        {% else %}
+                        <p class="text-muted fst-italic mb-0">无附加描述</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if moods|length > 10 %}
+                <div class="text-center mt-4">
+                    <a href="#" class="btn btn-outline-primary hover-lift">
+                        <i class="bi bi-clock-history me-1"></i>查看全部记录 ({{ moods|length }})
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-calendar"></i>
+                    <h6 class="mt-3">暂无心情记录</h6>
+                    <p class="text-muted small">开始记录你的第一份心情吧！</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右侧：统计和洞察 -->
+    <div class="col-lg-4">
+        <!-- 心情统计 -->
+        <div class="card mb-4 hover-lift">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up text-primary me-2"></i>心情统计
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- 简单的心情图表 -->
+                <div class="mood-chart d-flex align-items-end justify-content-around mb-4">
+                    {% for i in range(7) %}
+                    <div class="chart-bar" style="width: 40px; height: {{ [60,80,40,100,60,80,40][i] }}px; 
+                         background: linear-gradient(to top, var(--primary), var(--secondary));
+                         border-radius: 8px 8px 0 0;"></div>
+                    {% endfor %}
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="p-3">
+                            <h3 class="mb-1 text-primary">
+                                {% if moods %}
+                                    {{ (moods|map(attribute='mood_score')|sum / moods|length)|round(1) }}
+                                {% else %}
+                                    0.0
+                                {% endif %}
+                            </h3>
+                            <small class="text-muted">平均分</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3">
+                            <h3 class="mb-1 text-success">{{ moods|length }}</h3>
+                            <small class="text-muted">总记录</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 心情洞察 -->
+        <div class="card mb-4 hover-lift insight-card">
+            <div class="card-body">
+                <h6 class="mb-3">
+                    <i class="bi bi-lightbulb text-success me-2"></i>今日洞察
+                </h6>
+                {% if today_mood %}
+                    {% if today_mood.mood_score >= 4 %}
+                    <p class="mb-0">你的心情很好！继续保持这种积极状态，可以尝试分享你的好心情或帮助他人。</p>
+                    {% elif today_mood.mood_score == 3 %}
+                    <p class="mb-0">状态平稳。建议规划一些小目标，完成后给自己一些奖励。</p>
+                    {% else %}
+                    <p class="mb-0">可以尝试听听音乐、短暂休息或与朋友聊聊天来调整心情。</p>
+                    {% endif %}
+                {% else %}
+                <p class="mb-0">记录心情后，系统会为你提供个性化的情绪调节建议。</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 柔和翻页语录 -->
+        <div class="card hover-lift quote-card">
+            <div class="card-header bg-white border-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-chat-quote text-primary me-2"></i>每日一句
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="flip-container" id="flipContainer">
+                    <div class="flip-page front" id="currentPage">
+                        <div class="page-content">
+                            <div class="quote-text" id="currentQuoteText">
+                                "关注情绪变化是自我成长的重要一步。每一天的心情都值得被记录和尊重。"
+                            </div>
+                            <div class="quote-author" id="currentQuoteAuthor">
+                                — 心理健康专家
+                            </div>
+                            <div class="page-decoration">
+                                <div class="page-line"></div>
+                                <span class="page-number" id="currentPageNumber">1</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flip-page back" id="nextPage">
+                        <div class="page-content">
+                            <div class="quote-text" id="nextQuoteText">
+                                "学习是一场马拉松，不是百米冲刺。保持稳定节奏，才能走得更远。"
+                            </div>
+                            <div class="quote-author" id="nextQuoteAuthor">
+                                — 学习规划师
+                            </div>
+                            <div class="page-decoration">
+                                <div class="page-line"></div>
+                                <span class="page-number" id="nextPageNumber">2</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 翻页导航 -->
+                <div class="flip-nav">
+                    <button class="flip-btn" id="prevBtn" title="上一句">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    
+                    <div class="page-indicator" id="pageIndicator">
+                        <!-- 指示点将由JavaScript生成 -->
+                    </div>
+                    
+                    <button class="flip-btn" id="nextBtn" title="下一句">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 快速提示 -->
+        <div class="mt-4">
+            <h6 class="mb-3">
+                <i class="bi bi-info-circle text-info me-2"></i>小贴士
+            </h6>
+            <ul class="list-unstyled small">
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    每天记录心情有助于情绪管理
+                </li>
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    情绪低落时，尝试深呼吸或短暂休息
+                </li>
+                <li class="mb-2">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    与朋友分享感受可以缓解压力
+                </li>
+                <li>
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    规律作息和适度运动对情绪有益
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 心情选择器
+    let selectedMood = 3;
+    $('.mood-option').click(function() {
+        $('.mood-option').removeClass('selected');
+        $(this).addClass('selected');
+        selectedMood = $(this).data('score');
+        $('#selectedMood').val(selectedMood);
+    });
+    
+    // 初始化选择第三个心情
+    $('.mood-option').eq(2).addClass('selected');
+    
+    // 字符计数
+    $('#moodNote').on('input', function() {
+        const length = $(this).val().length;
+        const charCount = $('#charCount');
+        charCount.text(`${length}/200 字`);
+        
+        if (length > 200) {
+            $(this).val($(this).val().substring(0, 200));
+            charCount.text('200/200 字').addClass('limit');
+        } else {
+            charCount.removeClass('limit');
+        }
+    });
+    
+    // 快速标签
+    $('.tag-btn').click(function() {
+        const tag = $(this).text().trim();
+        const textarea = $('#moodNote');
+        const currentText = textarea.val();
+        
+        if (currentText.length + tag.length + 1 <= 200) {
+            if (currentText) {
+                textarea.val(currentText + ' ' + tag);
+            } else {
+                textarea.val(tag);
+            }
+            
+            // 更新字符计数
+            $('#moodNote').trigger('input');
+            
+            // 按钮反馈
+            $(this).removeClass('btn-outline-primary').addClass('btn-primary');
+            setTimeout(() => {
+                $(this).removeClass('btn-primary').addClass('btn-outline-primary');
+            }, 500);
+        } else {
+            showToast('已达到字数限制', 'warning');
+        }
+    });
+    
+    // 取消按钮
+    $('#cancelBtn').click(function() {
+        if ($('#moodNote').val() || selectedMood !== 3) {
+            showConfirm(
+                '确定要取消吗？已填写的内容将丢失。',
+                '确认取消'
+            ).then((confirmed) => {
+                if (confirmed) {
+                    window.location.href = "{{ url_for('dashboard') }}";
+                }
+            });
+        } else {
+            window.location.href = "{{ url_for('dashboard') }}";
+        }
+    });
+    
+    // 表单提交
+    $('#moodForm').submit(function(e) {
+        e.preventDefault();
+        
+        // 简单验证
+        if (!selectedMood) {
+            showToast('请选择一个心情评分', 'warning');
+            return;
+        }
+        
+        // 显示加载状态
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i>保存中...');
+        
+        // 模拟延迟后提交
+        setTimeout(() => {
+            this.submit();
+        }, 800);
+    });
+    
+    // ========== 柔和翻页语录系统 ==========
+    
+    // 语录数据库
+    const quotesDatabase = [
+        {
+            text: "关注情绪变化是自我成长的重要一步。每一天的心情都值得被记录和尊重。",
+            author: "心理健康专家"
+        },
+        {
+            text: "学习是一场马拉松，不是百米冲刺。保持稳定节奏，才能走得更远。",
+            author: "学习规划师"
+        },
+        {
+            text: "真正的进步来自于微小的、持续的改变，而不是一次性的巨大努力。",
+            author: "效率专家"
+        },
+        {
+            text: "情绪如天气，阴晴圆缺皆是自然。接纳自己的每一种状态。",
+            author: "心理学教授"
+        },
+        {
+            text: "每一次的情绪记录，都是与内心的一次真诚对话。",
+            author: "情绪管理师"
+        },
+        {
+            text: "学习不只是积累知识，更是培养面对困难时的韧性。",
+            author: "教育学家"
+        },
+        {
+            text: "休息不是浪费时间，而是为了更高质量的投入。",
+            author: "精力管理专家"
+        },
+        {
+            text: "今天的每一步努力，都在为明天的成功铺路。",
+            author: "成长导师"
+        },
+        {
+            text: "保持好奇心，保持求知欲，学习的路上永不孤单。",
+            author: "终身学习者"
+        },
+        {
+            text: "记录心情不仅是回顾过去，更是为了更好地规划未来。",
+            author: "生活规划师"
+        },
+        {
+            text: "每一次深呼吸，都是给心灵的一次温柔拥抱。",
+            author: "正念导师"
+        },
+        {
+            text: "困难像弹簧，你弱它就强。保持积极心态，困难自会退让。",
+            author: "心态教练"
+        },
+        {
+            text: "学习如登山，每一步虽小，但离山顶更近一步。",
+            author: "登山爱好者"
+        }
+    ];
+    
+    // 当前状态
+    let currentIndex = 0;
+    let isAnimating = false;
+    let autoPlayInterval = null;
+    
+    // 初始化语录系统
+    function initQuotes() {
+        updatePageContent();
+        createPageIndicators();
+        startAutoPlay();
+        
+        // 点击卡片也可以翻页
+        $('#flipContainer').click(function(e) {
+            if (!$(e.target).closest('.flip-btn').length) {
+                nextQuote();
+            }
+        });
+    }
+    
+    // 创建页面指示点
+    function createPageIndicators() {
+        const container = $('#pageIndicator');
+        container.empty();
+        
+        for (let i = 0; i < quotesDatabase.length; i++) {
+            const dot = $('<div class="page-dot"></div>');
+            if (i === currentIndex) {
+                dot.addClass('active');
+            }
+            dot.data('index', i);
+            container.append(dot);
+        }
+    }
+    
+    // 更新页面内容
+    function updatePageContent() {
+        const currentQuote = quotesDatabase[currentIndex];
+        const nextIndex = (currentIndex + 1) % quotesDatabase.length;
+        const nextQuote = quotesDatabase[nextIndex];
+        
+        // 更新当前页
+        $('#currentQuoteText').text(`"${currentQuote.text}"`);
+        $('#currentQuoteAuthor').text(`— ${currentQuote.author}`);
+        $('#currentPageNumber').text(currentIndex + 1);
+        
+        // 更新下一页（背面）
+        $('#nextQuoteText').text(`"${nextQuote.text}"`);
+        $('#nextQuoteAuthor').text(`— ${nextQuote.author}`);
+        $('#nextPageNumber').text(nextIndex + 1);
+        
+        // 更新指示点
+        $('.page-dot').removeClass('active');
+        $(`.page-dot[data-index="${currentIndex}"]`).addClass('active');
+        
+        // 更新按钮状态
+        updateButtonStates();
+    }
+    
+    // 更新按钮状态
+    function updateButtonStates() {
+        $('#prevBtn').prop('disabled', false);
+        $('#nextBtn').prop('disabled', false);
+    }
+    
+    // 下一句语录
+    function nextQuote() {
+        if (isAnimating) return;
+        
+        isAnimating = true;
+        const currentPage = $('#currentPage');
+        const nextPage = $('#nextPage');
+        
+        // 重置页面状态
+        currentPage.removeClass('front').addClass('flipping');
+        nextPage.removeClass('back').addClass('front');
+        
+        // 执行翻页动画
+        currentPage.css('transform', 'rotateY(-180deg)');
+        
+        // 动画完成后更新内容
+        setTimeout(() => {
+            // 更新索引
+            currentIndex = (currentIndex + 1) % quotesDatabase.length;
+            
+            // 重置页面位置
+            currentPage.removeClass('flipping').addClass('back');
+            nextPage.removeClass('front').addClass('back');
+            
+            // 重置transform
+            currentPage.css('transform', 'rotateY(180deg)');
+            nextPage.css('transform', 'rotateY(0deg)');
+            
+            // 交换页面ID
+            currentPage.attr('id', 'nextPage');
+            nextPage.attr('id', 'currentPage');
+            
+            // 更新内容
+            updatePageContent();
+            isAnimating = false;
+            
+            // 重置自动播放计时
+            resetAutoPlay();
+        }, 1200);
+    }
+    
+    // 上一句语录
+    function prevQuote() {
+        if (isAnimating) return;
+        
+        isAnimating = true;
+        const currentPage = $('#currentPage');
+        const nextPage = $('#nextPage');
+        
+        // 预先更新索引
+        currentIndex = (currentIndex - 1 + quotesDatabase.length) % quotesDatabase.length;
+        const prevIndex = (currentIndex - 1 + quotesDatabase.length) % quotesDatabase.length;
+        const prevQuote = quotesDatabase[prevIndex];
+        
+        // 临时设置前一页内容
+        nextPage.find('.quote-text').text(`"${prevQuote.text}"`);
+        nextPage.find('.quote-author').text(`— ${prevQuote.author}`);
+        nextPage.find('.page-number').text(prevIndex + 1);
+        
+        // 交换页面位置（使用反向动画）
+        currentPage.removeClass('front').addClass('back');
+        nextPage.removeClass('back').addClass('front');
+        
+        nextPage.css('transform', 'rotateY(180deg)');
+        
+        // 执行反向翻页动画
+        setTimeout(() => {
+            nextPage.css('transform', 'rotateY(0deg)');
+            
+            // 动画完成后交换页面ID
+            setTimeout(() => {
+                currentPage.attr('id', 'nextPage');
+                nextPage.attr('id', 'currentPage');
+                
+                // 更新内容
+                updatePageContent();
+                isAnimating = false;
+                
+                // 重置自动播放计时
+                resetAutoPlay();
+            }, 600);
+        }, 50);
+    }
+    
+    // 跳转到指定语录
+    function gotoQuote(index) {
+        if (isAnimating || index === currentIndex) return;
+        
+        // 判断方向
+        if (index > currentIndex) {
+            // 向前翻页
+            currentIndex = index;
+            nextQuote();
+        } else {
+            // 向后翻页
+            currentIndex = index;
+            prevQuote();
+        }
+    }
+    
+    // 自动播放
+    function startAutoPlay() {
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
+        autoPlayInterval = setInterval(() => {
+            nextQuote();
+        }, 10000); // 10秒自动切换
+    }
+    
+    function resetAutoPlay() {
+        startAutoPlay();
+    }
+    
+    // 事件绑定
+    $('#nextBtn').click(nextQuote);
+    $('#prevBtn').click(prevQuote);
+    
+    // 指示点点击
+    $(document).on('click', '.page-dot', function() {
+        const index = $(this).data('index');
+        gotoQuote(index);
+    });
+    
+    // 键盘导航
+    $(document).keydown(function(e) {
+        if ($('.quote-card').is(':visible')) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextQuote();
+                e.preventDefault();
+            } else if (e.key === 'ArrowLeft') {
+                prevQuote();
+                e.preventDefault();
+            }
+        }
+    });
+    
+    // 触摸滑动支持
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    $('#flipContainer').on('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        stopAutoPlay();
+    });
+    
+    $('#flipContainer').on('touchend', function(e) {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+        startAutoPlay();
+    });
+    
+    function handleSwipe() {
+        const swipeThreshold = 30;
+        const diff = touchEndX - touchStartX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+            if (diff > 0) {
+                // 向右滑动，上一页
+                prevQuote();
+            } else {
+                // 向左滑动，下一页
+                nextQuote();
+            }
+        }
+    }
+    
+    function stopAutoPlay() {
+        if (autoPlayInterval) {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+        }
+    }
+    
+    // 鼠标悬停时暂停自动播放
+    $('.quote-card').hover(
+        function() {
+            stopAutoPlay();
+        },
+        function() {
+            startAutoPlay();
+        }
+    );
+    
+    // 初始化
+    initQuotes();
+    
+    // 页面加载时如果有今日心情，显示个性化问候
+    {% if today_mood %}
+    setTimeout(() => {
+        const score = {{ today_mood.mood_score }};
+        const messages = {
+            1: "看到你今天心情不太好，可以试试听听音乐或出去走走。",
+            2: "今天好像有点小烦恼，和朋友聊聊会好很多哦。",
+            3: "保持平常心，给自己一点小奖励吧！",
+            4: "今天心情不错！继续保持这种积极状态～",
+            5: "哇！今天状态很棒！可以挑战一些有难度的任务！"
+        };
+        
+        if (messages[score]) {
+            showToast(messages[score], 'info');
+        }
+    }, 3000);
+    {% endif %}
+});
+</script>
+{% endblock %}

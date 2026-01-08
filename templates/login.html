@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - CampusPulse{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <h2><i class="bi bi-person-circle text-primary"></i></h2>
+                    <h3 class="card-title">登录 CampusPulse</h3>
+                    <p class="text-muted">智能学习健康助手</p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-control" name="username" required 
+                               placeholder="输入用户名">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">密码</label>
+                        <input type="password" class="form-control" name="password" required 
+                               placeholder="输入密码">
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">登录</button>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-secondary">
+                            注册新账户
+                        </a>
+                    </div>
+                </form>
+                
+                <div class="mt-4 text-center">
+                    <p class="text-muted small mb-1">测试账户</p>
+                    <p class="small">用户名: <strong>admin</strong> | 密码: <strong>admin123</strong></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-3">
+            <p class="text-muted small">
+                <i class="bi bi-info-circle"></i> 
+                首次使用请先用测试账户登录
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

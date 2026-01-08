@@ -26,6 +26,9 @@ In the XiaoYun platform, a "room" represents your personalized learning environm
 
 ## 🚀 快速开始 / Quick Start
 
+> **注意 / Note**: 以下示例命令为演示目的。实际命令将根据项目实现而定。
+> The following example commands are for demonstration purposes. Actual commands will depend on the project implementation.
+
 ### 第一步：环境准备 / Step 1: Environment Setup
 
 1. **克隆项目 / Clone the project**
@@ -157,6 +160,9 @@ Configuration for teachers conducting online classes:
 
 Configure AI assistant based on your learning style:
 
+> **注意 / Note**: AI模型的可用性取决于您的API配置和访问权限。常见选项包括GPT-4、GPT-3.5或其他兼容模型。
+> AI model availability depends on your API configuration and access permissions. Common options include GPT-4, GPT-3.5, or other compatible models.
+
 ```json
 {
   "aiAssistant": {
@@ -246,18 +252,24 @@ Organize your learning materials:
 
 Sync your room settings across devices:
 
+> **注意 / Note**: 以下为示例命令，实际实现取决于项目开发进度。
+> The following are example commands; actual implementation depends on project development progress.
+
 1. **启用云同步 / Enable Cloud Sync**
    ```bash
+   # 示例命令 / Example command
    xiaoyun sync --enable
    ```
 
 2. **登录账号 / Login to Account**
    ```bash
+   # 示例命令 / Example command
    xiaoyun login --username your_username
    ```
 
 3. **同步设置 / Sync Settings**
    ```bash
+   # 示例命令 / Example commands
    xiaoyun sync --pull  # 拉取配置 / Pull configuration
    xiaoyun sync --push  # 推送配置 / Push configuration
    ```
@@ -266,44 +278,51 @@ Sync your room settings across devices:
 
 ## 🛠️ 故障排除 / Troubleshooting
 
+> **注意 / Note**: 以下故障排除步骤中的命令为示例。实际命令将根据最终实现而定。
+> The commands in the troubleshooting steps below are examples. Actual commands will depend on the final implementation.
+
 ### 问题1：房间配置未生效 / Issue 1: Room Configuration Not Applied
 
 **解决方案 / Solution:**
 1. 检查配置文件格式是否正确 / Check configuration file format
 2. 重启应用 / Restart application
-3. 清除缓存：`xiaoyun cache --clear`
+3. 清除缓存（示例）：`xiaoyun cache --clear`
 
 ### 问题2：AI助手无响应 / Issue 2: AI Assistant Not Responding
 
 **解决方案 / Solution:**
 1. 检查网络连接 / Check network connection
-2. 验证API密钥：`xiaoyun check --api-key`
-3. 查看日志：`xiaoyun logs --tail 100`
+2. 验证API密钥配置 / Verify API key configuration
+3. 查看应用日志文件 / Check application log files
 
 ### 问题3：资源同步失败 / Issue 3: Resource Sync Failed
 
 **解决方案 / Solution:**
 1. 检查存储空间 / Check storage space
 2. 验证网络连接 / Verify network connection
-3. 手动重试：`xiaoyun sync --retry`
+3. 检查同步配置设置 / Check sync configuration settings
 
 ---
 
 ## 📚 更多资源 / Additional Resources
 
-- **官方文档 / Official Documentation**: [待添加 / To be added]
-- **视频教程 / Video Tutorials**: [待添加 / To be added]
-- **社区论坛 / Community Forum**: [待添加 / To be added]
-- **常见问题 / FAQ**: [待添加 / To be added]
+更多资源将在项目开发过程中逐步添加：
+
+Additional resources will be added as the project develops:
+
+- **官方文档 / Official Documentation**: Coming soon
+- **视频教程 / Video Tutorials**: Coming soon
+- **社区论坛 / Community Forum**: Coming soon
+- **常见问题 / FAQ**: Coming soon
 
 ---
 
 ## 💡 最佳实践 / Best Practices
 
 1. **定期备份配置 / Regular Configuration Backup**
-   ```bash
-   xiaoyun backup --config
-   ```
+   - 将配置文件保存在安全位置
+   - Keep configuration files in a safe location
+   - 示例命令 / Example command: `xiaoyun backup --config`
 
 2. **使用版本控制 / Use Version Control**
    - 将配置文件加入版本控制系统
